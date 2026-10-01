@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { gamificationApi } from "./api";
 import { useAuth } from "./auth";
 import type { UserProfile } from "./types";
@@ -24,57 +24,105 @@ export async function awardXp(userId: string | undefined, action: string) {
   }
 }
 
+/** Profil gamifié (XP, niveau, série, badges) rechargé à chaque notifyXpChanged(). */
 export function useGameProfile() {
   const { user, isLoggedIn } = useAuth();
+  const uid = user?.user_id;
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!user?.user_id) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setProfile(await gamificationApi.profile(user.user_id));
-    } catch {
-      // le profil gamifié est secondaire : on n'affiche pas d'erreur bloquante
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.user_id]);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
-    load();
-    window.addEventListener(XP_EVENT, load);
-    return () => window.removeEventListener(XP_EVENT, load);
-  }, [isLoggedIn, load]);
+    const bump = () => setVersion((v) => v + 1);
+    window.addEventListener(XP_EVENT, bump);
+    return () => window.removeEventListener(XP_EVENT, bump);
+  }, []);
 
-  return { profile, loading, reload: load };
+  useEffect(() => {
+    if (!isLoggedIn || !uid) return;
+    let cancelled = false;
+    gamificationApi
+      .profile(uid)
+      .then((p) => {
+        if (!cancelled) setProfile(p);
+      })
+      .catch(() => {
+        // le profil gamifié est secondaire : pas d'erreur bloquante
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, uid, version]);
+
+  return { profile: isLoggedIn ? profile : null, reload: notifyXpChanged };
 }
 
-/** Petit helper de chargement asynchrone avec état. */
-export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+interface AsyncState<T> {
+  key: string | null;
+  data: T | null;
+  error: string | null;
+}
 
-  const run = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setData(await fn());
-    } catch (e) {
-      setError((e as Error).message || "Une erreur est survenue");
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+/**
+ * Chargement asynchrone relancé quand `deps` change.
+ * `loading` est dérivé (aucun setState synchrone dans les effets).
+ */
+export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], initialData?: T | null) {
+  const key = JSON.stringify(deps);
+  const fnRef = useRef(fn);
+  const keyRef = useRef(key);
+  // Clé des données déjà en main (rendu serveur) : pas de second appel, même sous StrictMode
+  const loadedKey = useRef<string | null>(initialData != null ? key : null);
+  const [state, setState] = useState<AsyncState<T>>(
+    initialData != null ? { key, data: initialData, error: null } : { key: null, data: null, error: null },
+  );
+  const [reloading, setReloading] = useState(false);
+
+  // Toujours appeler la dernière version de fn (déclaré avant l'effet de chargement)
+  useEffect(() => {
+    fnRef.current = fn;
+    keyRef.current = key;
+  });
 
   useEffect(() => {
-    run();
-  }, [run]);
+    if (loadedKey.current === key) return;
+    let cancelled = false;
+    fnRef
+      .current()
+      .then((data) => {
+        if (cancelled) return;
+        loadedKey.current = key;
+        setState({ key, data, error: null });
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setState((s) => ({ key, data: s.data, error: e.message || "Une erreur est survenue" }));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
 
-  return { data, setData, error, loading, reload: run };
+  const reload = useCallback(async () => {
+    setReloading(true);
+    try {
+      const data = await fnRef.current();
+      setState({ key: keyRef.current, data, error: null });
+    } catch (e) {
+      setState((s) => ({ ...s, key: keyRef.current, error: (e as Error).message || "Une erreur est survenue" }));
+    } finally {
+      setReloading(false);
+    }
+  }, []);
+
+  const setData = useCallback((updater: T | null | ((prev: T | null) => T | null)) => {
+    setState((s) => ({ ...s, data: typeof updater === "function" ? (updater as (p: T | null) => T | null)(s.data) : updater }));
+  }, []);
+
+  return {
+    data: state.data,
+    error: state.key === key ? state.error : null,
+    // Un rechargement manuel ne masque pas les données déjà affichées
+    loading: state.key !== key || (reloading && state.data === null),
+    setData,
+    reload,
+  };
 }

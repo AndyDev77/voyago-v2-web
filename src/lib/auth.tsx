@@ -7,7 +7,7 @@ import type { AuthResponse, AuthUser } from "./types";
 
 interface AuthContextValue {
   user: AuthUser | null;
-  token: string | null;
+  /** Toujours vrai : la session est résolue côté serveur avant le premier rendu. */
   ready: boolean;
   isLoggedIn: boolean;
   isGuest: boolean;
@@ -27,59 +27,40 @@ function newGuestId() {
   return `guest_${uuid}`;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+/**
+ * L'utilisateur initial est lu côté serveur (cookie httpOnly → /api/auth/me) dans le layout racine :
+ * pas de jeton dans le navigateur, pas d'écran de chargement au démarrage.
+ */
+export function AuthProvider({ children, initialUser }: { children: React.ReactNode; initialUser: AuthUser | null }) {
+  const [user, setUserState] = useState<AuthUser | null>(initialUser);
 
-  const clear = useCallback(() => {
-    storage.clearSession();
-    setUserState(null);
-    setToken(null);
-  }, []);
-
+  const setUser = useCallback((u: AuthUser) => setUserState(u), []);
   const applySession = useCallback((res: AuthResponse) => {
-    storage.setSession(res.session_token, res.user_id, res.tenant_id, res.user);
-    setToken(res.session_token);
     setUserState(res.user);
     return res.user;
   }, []);
 
-  const setUser = useCallback((u: AuthUser) => {
-    storage.setUser(u);
-    setUserState(u);
+  useEffect(() => {
+    // Session expirée côté backend : le BFF a déjà effacé les cookies
+    setOnAuthExpired(() => setUserState(null));
+    storage.purgeLegacySession();
+    if (!storage.getGuestId()) storage.setGuestId(newGuestId());
+    return () => setOnAuthExpired(null);
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!storage.getToken()) return;
     try {
-      setUser(await authApi.me());
+      setUserState(await authApi.me());
     } catch {
-      // 401 géré par onAuthExpired ; autres erreurs : on garde le cache
+      // 401 géré par onAuthExpired
     }
-  }, [setUser]);
-
-  // Chargement de session au démarrage (équivalent AuthNotifier.loadSession)
-  useEffect(() => {
-    setOnAuthExpired(clear);
-    const t = storage.getToken();
-    const cached = storage.getUser();
-    if (t && cached) {
-      setToken(t);
-      setUserState(cached);
-      authApi.me().then(setUser).catch(() => {});
-    }
-    if (!storage.getGuestId()) storage.setGuestId(newGuestId());
-    setReady(true);
-    return () => setOnAuthExpired(null);
-  }, [clear, setUser]);
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => {
-    const isLoggedIn = !!user && !!token;
+    const isLoggedIn = !!user;
     return {
       user,
-      token,
-      ready,
+      ready: true,
       isLoggedIn,
       isGuest: isLoggedIn && (user?.auth_provider === "guest" || user?.user_id.startsWith("guest_") === true),
       login: async (email, password) => applySession(await authApi.login(email, password)),
@@ -98,20 +79,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout: async () => {
         try {
           await authApi.logout();
-        } catch {
-          // session déjà expirée côté serveur
+        } finally {
+          // Navigation complète : le layout serveur se re-rend sans session (pas de redirection parasite vers /login)
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- rechargement complet voulu
+          window.location.assign("/");
         }
-        clear();
       },
       updateProfile: async (dto) => {
         const updated = await authApi.updateMe(dto);
-        setUser(updated);
+        setUserState(updated);
         return updated;
       },
       setUser,
       refresh,
     };
-  }, [user, token, ready, applySession, clear, setUser, refresh]);
+  }, [user, applySession, setUser, refresh]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

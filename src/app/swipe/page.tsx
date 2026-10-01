@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Heart, RotateCcw, Undo2, X, Zap } from "lucide-react";
 import { interestsApi } from "@/lib/api";
@@ -35,7 +35,7 @@ function SwipeCard({ interest, onDecide, top }: { interest: Interest; onDecide: 
   const v = INTEREST_VISUALS[interest.id] || { gradient: "from-primary to-bg", tags: [] };
   const [dx, setDx] = useState(0);
   const [leaving, setLeaving] = useState<null | "left" | "right">(null);
-  const start = useRef<number | null>(null);
+  const [dragStart, setDragStart] = useState<number | null>(null);
   const [imgOk, setImgOk] = useState(true);
 
   const decide = useCallback(
@@ -63,20 +63,20 @@ function SwipeCard({ interest, onDecide, top }: { interest: Interest; onDecide: 
       className={cn(
         "absolute inset-0 select-none overflow-hidden rounded-[2rem] border border-line bg-surface-solid shadow-2xl touch-none",
         top ? "cursor-grab active:cursor-grabbing" : "pointer-events-none scale-95 translate-y-4 opacity-60",
-        start.current === null && "transition-transform duration-200",
+        dragStart === null && "transition-transform duration-200",
       )}
       style={top ? { transform: `translateX(${x}px) rotate(${x / 18}deg)` } : undefined}
       onPointerDown={(e) => {
         if (!top || leaving) return;
-        start.current = e.clientX;
+        setDragStart(e.clientX);
         (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
       }}
       onPointerMove={(e) => {
-        if (start.current !== null) setDx(e.clientX - start.current);
+        if (dragStart !== null) setDx(e.clientX - dragStart);
       }}
       onPointerUp={() => {
-        if (start.current === null) return;
-        start.current = null;
+        if (dragStart === null) return;
+        setDragStart(null);
         if (Math.abs(dx) > THRESHOLD) decide(dx > 0);
         else setDx(0);
       }}

@@ -30,7 +30,7 @@ function LoginForm() {
       const u = await login(email.trim(), password);
       router.replace(u.onboarding_completed ? next : "/onboarding");
     } catch (err) {
-      setError((err as Error).message === "Invalid credentials" ? "Email ou mot de passe incorrect." : (err as Error).message);
+      setError(/Invalid email or password|Invalid credentials/.test((err as Error).message) ? "Email ou mot de passe incorrect." : (err as Error).message);
     } finally {
       setLoading(false);
     }

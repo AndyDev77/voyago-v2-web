@@ -23,8 +23,8 @@ export interface AuthUser {
   pro_expires_at?: string | null;
 }
 
+/** Réponse d'auth telle que renvoyée par le BFF (le session_token reste côté serveur, en cookie httpOnly). */
 export interface AuthResponse {
-  session_token: string;
   user_id: string;
   tenant_id: string;
   user: AuthUser;

@@ -1,4 +1,3 @@
-import { storage } from "./storage";
 import type {
   AuthResponse,
   AuthUser,
@@ -13,7 +12,8 @@ import type {
   XpRewards,
 } from "./types";
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3333").replace(/\/$/, "");
+// Tous les appels passent par le BFF Next.js (/bff → backend /api), qui porte le jeton en cookie httpOnly.
+const BFF_PREFIX = "/bff";
 
 export class ApiError extends Error {
   constructor(message: string, public status?: number, public data?: unknown) {
@@ -41,10 +41,6 @@ function extractMessage(data: unknown, fallback: string): string {
 
 async function request<T>(method: Method, path: string, body?: unknown, init?: { timeoutMs?: number }): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
-  const token = storage.getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const tenant = storage.getTenantId();
-  if (tenant) headers["x-tenant-id"] = tenant;
 
   let payload: BodyInit | undefined;
   if (body instanceof FormData) {
@@ -60,7 +56,7 @@ async function request<T>(method: Method, path: string, body?: unknown, init?: {
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: payload, signal: controller.signal });
+    res = await fetch(path.replace(/^\/api/, BFF_PREFIX), { method, headers, body: payload, signal: controller.signal, credentials: "same-origin" });
   } catch (err) {
     if ((err as Error).name === "AbortError") {
       throw new ApiError("Le serveur met trop de temps à répondre. Réessaie dans un instant.");
@@ -145,7 +141,7 @@ export interface GenerateTripDto {
 }
 
 export const tripsApi = {
-  generate: async (dto: GenerateTripDto) => withId(await post<Trip>("/api/trips/generate", dto, { timeoutMs: 120_000 })),
+  generate: async (dto: GenerateTripDto) => withId(await post<Trip>("/api/trips/generate", dto, { timeoutMs: 240_000 })),
   byUser: async (userId: string) => (await get<Trip[]>(`/api/trips/${userId}`)).map(withId),
   byId: async (tripId: string) => withId(await get<Trip>(`/api/trip/${tripId}`)),
 };

@@ -2,9 +2,10 @@
 import Link from "next/link";
 import { CalendarDays, Heart, MapPin } from "lucide-react";
 import type { Trip } from "@/lib/types";
-import { displayName, flagEmoji, formatDate, tripCover, tripTitle } from "@/lib/utils";
+import { displayName, formatDate, tripCover, tripTitle } from "@/lib/utils";
 import { IMAGES } from "@/lib/constants";
 import { Avatar } from "./Avatar";
+import { Flag } from "./Flag";
 
 export function TripCard({ trip, showAuthor }: { trip: Trip; showAuthor?: boolean }) {
   const cover = tripCover(trip) || IMAGES.paris;
@@ -30,7 +31,7 @@ export function TripCard({ trip, showAuthor }: { trip: Trip; showAuthor?: boolea
           </span>
         )}
         <h3 className="absolute bottom-3 left-4 right-4 text-xl font-bold leading-tight drop-shadow">
-          {flagEmoji(trip.country_code)} {tripTitle(trip)}
+          <Flag code={trip.country_code} /> {tripTitle(trip)}
         </h3>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4 text-sm text-muted">

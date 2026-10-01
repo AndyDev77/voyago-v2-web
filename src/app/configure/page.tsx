@@ -9,10 +9,12 @@ import { useAuth } from "@/lib/auth";
 import { notifyXpChanged } from "@/lib/hooks";
 import { BUDGETS, PACES, TRANSPORTS, INTEREST_VISUALS } from "@/lib/constants";
 import { clothingTip, fetchForecast, isRainy, searchPlaces, weatherEmoji, weatherLabel, type Forecast, type Place } from "@/lib/geo";
-import { cn, flagEmoji } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { Flag } from "@/components/Flag";
 import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Button, Card, Chip, ErrorBox, inputCls } from "@/components/ui";
+import { FlyingParrot } from "@/components/FlyingParrot";
 
 const INTEREST_LABELS: Record<string, string> = {
   culture: "🏛️ Culture",
@@ -47,15 +49,11 @@ function GeneratingOverlay({ destination }: { destination: string }) {
   }, []);
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-bg/90 backdrop-blur-md px-6">
-      <div className="max-w-md text-center animate-pop-in">
-        <div className="relative mx-auto flex size-32 items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-          <span className="text-6xl">🦜</span>
-        </div>
+      <div className="w-full max-w-md text-center animate-pop-in">
+        <FlyingParrot />
         <h2 className="mt-8 text-2xl font-bold">L&apos;IA prépare ton voyage à {destination}</h2>
         <p key={i} className="mt-3 text-primary animate-pop-in">{LOADING_STEPS[i]}</p>
-        <p className="mt-6 text-xs text-muted">Un itinéraire multi-jours peut prendre jusqu&apos;à une minute.</p>
+        <p className="mt-6 text-xs text-muted">Un long itinéraire peut prendre une à deux minutes.</p>
       </div>
     </div>
   );
@@ -77,7 +75,7 @@ function Configure() {
   const [pace, setPace] = useState(1);
   const [transports, setTransports] = useState<string[]>(["marche"]);
   const [budget, setBudget] = useState<(typeof BUDGETS)[number]["id"]>("moyen");
-  const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [forecastFor, setForecastFor] = useState<{ id: number; f: Forecast } | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -107,11 +105,14 @@ function Configure() {
 
   // Prévisions météo de la destination pour le coach IA
   useEffect(() => {
-    if (!place) return setForecast(null);
+    if (!place) return;
     const ctrl = new AbortController();
-    fetchForecast(place.latitude, place.longitude, ctrl.signal).then(setForecast).catch(() => {});
+    fetchForecast(place.latitude, place.longitude, ctrl.signal)
+      .then((f) => f && setForecastFor({ id: place.id, f }))
+      .catch(() => {});
     return () => ctrl.abort();
   }, [place]);
+  const forecast = place && forecastFor?.id === place.id ? forecastFor.f : null;
 
   // Durée calculée depuis les dates si elles sont renseignées
   const effectiveDuration = startDate && endDate && endDate >= startDate ? Math.min(30, daysBetween(startDate, endDate)) : duration;
@@ -204,7 +205,7 @@ function Configure() {
                           }}
                           className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2 cursor-pointer"
                         >
-                          <span className="text-xl">{flagEmoji(s.country_code)}</span>
+                          <Flag code={s.country_code} className="h-4" />
                           <span>
                             <span className="font-semibold">{s.name}</span>
                             <span className="block text-xs text-muted">{[s.admin1, s.country].filter(Boolean).join(", ")}</span>

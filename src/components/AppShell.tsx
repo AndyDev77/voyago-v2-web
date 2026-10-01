@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Compass, Crown, Flame, Home, LogOut, Plus, Trophy, User, Users, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -21,7 +21,6 @@ const NAV = [
 
 function UserMenu() {
   const { user, logout } = useAuth();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -53,10 +52,7 @@ function UserMenu() {
             <Crown className="size-4 text-gold" /> {user.is_pro ? "Mon abonnement Pro" : "Passer Pro"}
           </Link>
           <button
-            onClick={async () => {
-              await logout();
-              router.push("/");
-            }}
+            onClick={() => logout()}
             className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-coral hover:bg-coral/10"
           >
             <LogOut className="size-4" /> Déconnexion
@@ -121,7 +117,7 @@ export function AppShell({ children, wide }: { children: React.ReactNode; wide?:
                     <span className="text-primary">Niv. {profile.level}</span>
                   </Link>
                 )}
-                <Link href="/swipe" className={cn(btn.base, btn.primary, btn.sm, "hidden md:inline-flex")}>
+                <Link href="/swipe" className={cn(btn.base, btn.primary, btn.sm, "max-md:hidden")}>
                   <Plus className="size-4" /> Nouveau voyage
                 </Link>
                 <UserMenu />
@@ -131,7 +127,7 @@ export function AppShell({ children, wide }: { children: React.ReactNode; wide?:
                 <Link href="/login" className={cn(btn.base, btn.outline, btn.sm)}>
                   Connexion
                 </Link>
-                <Link href="/signup" className={cn(btn.base, btn.primary, btn.sm, "hidden sm:inline-flex")}>
+                <Link href="/signup" className={cn(btn.base, btn.primary, btn.sm, "max-sm:hidden")}>
                   Créer un compte
                 </Link>
               </>

@@ -1,12 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
-"use client";
 
 import Link from "next/link";
 import { ArrowRight, BrainCircuit, CloudSun, Gamepad2, Heart, Map, Sparkles, Users, X } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/server/session";
 import { IMAGES } from "@/lib/constants";
 import { Logo } from "@/components/Logo";
-import { btn } from "@/components/ui";
+import { btn } from "@/components/buttonStyles";
 import { cn } from "@/lib/utils";
 
 const FEATURES = [
@@ -34,8 +33,8 @@ const STEPS = [
   { icon: Users, title: "Partage avec ta tribu", text: "Rejoins des cercles de voyageurs et publie tes itinéraires." },
 ];
 
-export default function LandingPage() {
-  const { isLoggedIn } = useAuth();
+export default async function LandingPage() {
+  const isLoggedIn = !!(await getCurrentUser());
   const startHref = isLoggedIn ? "/swipe" : "/signup";
 
   return (

@@ -15,6 +15,9 @@ import { XpBar } from "@/components/XpBar";
 
 type Earned = { label: string; xp: number; icon: React.ReactNode };
 
+// Âge minimum 13 ans (calculé une fois au chargement du module)
+const MAX_DOB = new Date(Date.now() - 13 * 365.25 * 864e5).toISOString().slice(0, 10);
+
 function Onboarding() {
   const { user, updateProfile } = useAuth();
   const router = useRouter();
@@ -34,8 +37,6 @@ function Onboarding() {
     checked.current = true;
     if (user.onboarding_completed) router.replace("/dashboard");
   }, [user, router]);
-
-  const maxDob = new Date(Date.now() - 13 * 365.25 * 864e5).toISOString().slice(0, 10);
 
   const goStep2 = () => {
     if (!dob) return setError("Indique ta date de naissance pour continuer.");
@@ -94,7 +95,7 @@ function Onboarding() {
             <p className="mt-3 text-lg text-muted">Quelques infos pour que l&apos;IA te prépare des voyages vraiment adaptés.</p>
             <div className="mt-10 flex flex-col gap-6">
               <Field label="Date de naissance">
-                <input type="date" max={maxDob} value={dob} onChange={(e) => setDob(e.target.value)} className={inputCls} />
+                <input type="date" max={MAX_DOB} value={dob} onChange={(e) => setDob(e.target.value)} className={inputCls} />
               </Field>
               <div>
                 <span className="text-sm font-semibold">Genre</span>
@@ -163,7 +164,7 @@ function Onboarding() {
           <div className="mx-auto max-w-xl text-center animate-pop-in">
             <div className="relative mx-auto flex size-44 items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-gold/20 blur-3xl" />
-              <span className="relative text-[110px] leading-none">🧰</span>
+              <span className="relative text-[110px] leading-none">🏆</span>
               <span className="absolute right-4 top-2 text-3xl animate-bounce">✨</span>
             </div>
             <p className="mt-6 text-xs font-bold uppercase tracking-[0.3em] text-muted">Onboarding réussi</p>

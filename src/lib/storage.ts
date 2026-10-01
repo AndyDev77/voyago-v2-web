@@ -1,64 +1,21 @@
-import type { AuthUser } from "./types";
-
-// Équivalent web de SecureStorageService (mobile) — clés identiques.
-const KEY_TOKEN = "voyago_session_token";
-const KEY_USER_ID = "voyago_user_id";
-const KEY_TENANT_ID = "voyago_tenant_id";
-const KEY_AUTH_USER = "voyago_auth_user";
+// Stockage navigateur limité aux données non sensibles.
+// Le jeton de session vit désormais dans un cookie httpOnly géré par le BFF (/bff).
 const KEY_GUEST_ID = "voyago_guest_user_id";
-export const DEFAULT_TENANT_ID = "default";
 
-function read(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
+// Clés de l'ancienne version (jeton en localStorage) à purger
+const LEGACY_KEYS = ["voyago_session_token", "voyago_user_id", "voyago_tenant_id", "voyago_auth_user"];
 
-function write(key: string, value: string | null) {
-  if (typeof window === "undefined") return;
+function safe<T>(fn: () => T, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
   try {
-    if (value === null) window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, value);
+    return fn();
   } catch {
-    // stockage indisponible (navigation privée stricte) : on ignore
+    return fallback;
   }
 }
 
 export const storage = {
-  getToken: () => read(KEY_TOKEN),
-  getUserId: () => read(KEY_USER_ID),
-  getTenantId: () => read(KEY_TENANT_ID) || DEFAULT_TENANT_ID,
-  getGuestId: () => read(KEY_GUEST_ID),
-  setGuestId: (id: string) => write(KEY_GUEST_ID, id),
-
-  getUser(): AuthUser | null {
-    const raw = read(KEY_AUTH_USER);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as AuthUser;
-    } catch {
-      return null;
-    }
-  },
-
-  setSession(token: string, userId: string, tenantId: string, user: AuthUser) {
-    write(KEY_TOKEN, token);
-    write(KEY_USER_ID, userId);
-    write(KEY_TENANT_ID, tenantId || userId);
-    write(KEY_AUTH_USER, JSON.stringify(user));
-  },
-
-  setUser(user: AuthUser) {
-    write(KEY_AUTH_USER, JSON.stringify(user));
-  },
-
-  clearSession() {
-    write(KEY_TOKEN, null);
-    write(KEY_USER_ID, null);
-    write(KEY_TENANT_ID, null);
-    write(KEY_AUTH_USER, null);
-  },
+  getGuestId: () => safe(() => window.localStorage.getItem(KEY_GUEST_ID), null),
+  setGuestId: (id: string) => safe(() => window.localStorage.setItem(KEY_GUEST_ID, id), undefined),
+  purgeLegacySession: () => safe(() => LEGACY_KEYS.forEach((k) => window.localStorage.removeItem(k)), undefined),
 };

@@ -72,11 +72,46 @@ body {
   background: var(--color-bg-deep);
   font-family: var(--font-sans);
 }
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
+/* Tuiles OSM claires converties en thème sombre teinté */
+.voyago-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85) saturate(0.6);
+}
+/* Popups : préfixe .voyago-map pour passer devant leaflet.css (chargé après) */
+.voyago-map .leaflet-popup-content-wrapper,
+.voyago-map .leaflet-popup-tip {
   background: var(--color-surface-solid);
   color: var(--color-ink);
   border: 1px solid var(--color-line);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+.voyago-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+.voyago-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+  font-family: var(--font-sans);
+  line-height: inherit;
+}
+.voyago-popup .leaflet-popup-content p {
+  margin: 0;
+}
+.voyago-popup a.leaflet-popup-close-button {
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: rgba(8, 18, 16, 0.8);
+  color: var(--color-ink);
+  font-size: 18px;
+  line-height: 24px;
+}
+.voyago-popup a.leaflet-popup-close-button:hover {
+  color: var(--color-primary);
 }
 .leaflet-control-zoom a {
   background: var(--color-surface-solid) !important;
@@ -105,4 +140,89 @@ body {
 }
 .animate-pop-in {
   animation: pop-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* Défilement horizontal sans barre visible */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- Perroquet en vol (écran de génération) ---------- */
+.flight-sky {
+  background: linear-gradient(180deg, #123a46 0%, #0f2d33 55%, #0c1a18 100%);
+}
+/* Le perroquet regarde à gauche : le décor défile donc vers la droite */
+.flight-cloud {
+  position: absolute;
+  left: 0;
+  height: 18px;
+  border-radius: 9999px;
+  background: rgba(242, 251, 249, 0.75);
+  box-shadow: 14px -8px 0 2px rgba(242, 251, 249, 0.75), -12px -4px 0 0 rgba(242, 251, 249, 0.75);
+  animation: flight-cloud linear infinite;
+}
+@keyframes flight-cloud {
+  from { transform: translateX(-140px); }
+  to { transform: translateX(420px); }
+}
+.flight-hills {
+  animation: flight-hills 6s linear infinite;
+}
+@keyframes flight-hills {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+.flight-bob {
+  animation: flight-bob 2.4s ease-in-out infinite;
+}
+@keyframes flight-bob {
+  0%, 100% { margin-top: -12px; rotate: -16deg; }
+  50% { margin-top: 12px; rotate: -4deg; }
+}
+/* Battements d'ailes : l'aile pivote à l'épaule et passe sous le corps (scaleY négatif) */
+.parrot-wing-front,
+.parrot-wing-back {
+  transform-box: view-box;
+  animation: wing-flap 0.34s ease-in-out infinite alternate;
+}
+.parrot-wing-front { transform-origin: 62px 47px; }
+.parrot-wing-back {
+  transform-origin: 64px 45px;
+  animation-name: wing-flap-back;
+  animation-delay: -0.04s;
+}
+@keyframes wing-flap {
+  from { transform: rotate(-8deg) scaleY(1); }
+  to { transform: rotate(10deg) scaleY(-0.75); }
+}
+@keyframes wing-flap-back {
+  from { transform: rotate(-12deg) scaleY(0.95); }
+  to { transform: rotate(6deg) scaleY(-0.55); }
+}
+/* Le corps remonte légèrement à chaque coup d'aile */
+.parrot-lift {
+  animation: parrot-lift 0.34s ease-in-out infinite alternate;
+}
+@keyframes parrot-lift {
+  from { transform: translateY(2px); }
+  to { transform: translateY(-2px); }
+}
+.flight-streak {
+  display: block;
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(13, 242, 204, 0.9), transparent);
+  animation: flight-streak 0.6s linear infinite;
+}
+@keyframes flight-streak {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(40px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-cloud, .flight-hills, .flight-bob, .flight-streak, .parrot-wing-front, .parrot-wing-back, .parrot-lift {
+    animation: none;
+  }
 }

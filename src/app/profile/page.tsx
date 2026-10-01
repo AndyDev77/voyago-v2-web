@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Camera, Check, Crown, Fingerprint, Pencil, Thermometer, Trash2, X } from "lucide-react";
 import { authApi, tripsApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -127,7 +127,6 @@ function Profile() {
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => setError(null), [editing]);
 
   // « ADN du voyageur » : fréquence des envies dans les voyages générés
   const dna = useMemo(() => {
@@ -215,7 +214,10 @@ function Profile() {
             </div>
           </div>
           <div className="flex flex-col gap-3">
-            <Button variant="gold" onClick={() => setEditing((e) => !e)}>
+            <Button variant="gold" onClick={() => {
+                setError(null);
+                setEditing((e) => !e);
+              }}>
               <Pencil className="size-4" /> Modifier le profil
             </Button>
             {user.picture && (

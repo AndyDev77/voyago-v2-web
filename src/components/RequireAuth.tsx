@@ -18,7 +18,11 @@ export function RequireAuth({ children, allowIncompleteOnboarding }: { children:
 
   useEffect(() => {
     if (!ready) return;
-    if (!isLoggedIn) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    if (!isLoggedIn) {
+      // Le proxy a laissé passer un cookie de session que le backend refuse : on le purge via le BFF
+      fetch("/bff/auth/logout", { method: "POST" }).catch(() => {});
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    }
     else if (needsOnboarding) router.replace("/onboarding");
   }, [ready, isLoggedIn, needsOnboarding, router, pathname]);
 
